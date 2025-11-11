@@ -14,6 +14,7 @@
 # ----------- Bibliotheken importieren -----------
 # Hier werden später alle benötigten CircuitPython-Bibliotheken importiert
 # z.B. import board, time, wifi, adafruit_dht, etc.
+import os
 import time
 import adafruit_dht as dht
 import board
@@ -42,8 +43,8 @@ class ConfigManager:
         """
         try:
             with open(self.filepath, "rb") as f:
-                data = tomllib.load(f)
-            return data
+                settings = os.getenv()
+            return settings
         except FileNotFoundError:
             print(f"Die Datei '{self.filepath}' wurde nicht gefunden.")
             return {}
@@ -59,11 +60,8 @@ class ConfigManager:
         :param settings: Das Dictionary mit den zu speichernden Einstellungen.
         """
         try:
-            with open(self.filepath, "wb") as f:
-                tomli_w.dump(settings, f)
             print(f"Einstellungen wurden in '{self.filepath}' gespeichert.")
             
-            # Simulierter Neustart des Mikrocontrollers:
             self._restart_microcontroller()
 
         except Exception as e:
@@ -254,6 +252,24 @@ class WebServer:
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
 #    - WebServer starten.
 sensor = Sensor(pin_number=22)
+configManager = ConfigManager(filepath="settings.toml")
+config = configManager.load_settings()
+
+networkManager = NetworkManager(config["wifi_ssid"], config["wifi_password"])
+if not NetworkManager.connect():
+    for _ in range(5):
+        print("Verbindung zum WLAN fehlgeschlagen. Retry in 5 Sekunden.")
+        time.sleep(5)
+        isconnected = networkManager.connect()
+        if isconnected:
+            break
+    if not isconnected:
+        print("Konnte keine Verbindung zum WLAN herstellen. Starte im Offline-Modus.")
+        while True:
+            time.sleep(3)
+            print(sensor.read_data())
+
+
 while True:
     time.sleep(3)
     print(sensor.read_data())
