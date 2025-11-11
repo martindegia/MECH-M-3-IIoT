@@ -14,7 +14,9 @@
 # ----------- Bibliotheken importieren -----------
 # Hier werden später alle benötigten CircuitPython-Bibliotheken importiert
 # z.B. import board, time, wifi, adafruit_dht, etc.
-
+import time
+import adafruit_dht as dht
+import board
 
 # ===================================================================
 # KLASSE: ConfigManager
@@ -30,7 +32,7 @@ class ConfigManager:
 
         :param filepath: Der Pfad zur Konfigurationsdatei (z.B. "settings.toml").
         """
-        pass
+        self.filepath = filepath
 
     def load_settings(self) -> dict:
         """
@@ -38,7 +40,16 @@ class ConfigManager:
 
         :return: Ein Dictionary mit allen geladenen Einstellungen.
         """
-        pass
+        try:
+            with open(self.filepath, "rb") as f:
+                data = tomllib.load(f)
+            return data
+        except FileNotFoundError:
+            print(f"Die Datei '{self.filepath}' wurde nicht gefunden.")
+            return {}
+        except Exception as e:
+            print(f"Fehler beim Laden der Konfiguration: {e}")
+            return {}
 
     def save_settings(self, settings: dict):
         """
@@ -47,7 +58,24 @@ class ConfigManager:
 
         :param settings: Das Dictionary mit den zu speichernden Einstellungen.
         """
-        pass
+        try:
+            with open(self.filepath, "wb") as f:
+                tomli_w.dump(settings, f)
+            print(f"Einstellungen wurden in '{self.filepath}' gespeichert.")
+            
+            # Simulierter Neustart des Mikrocontrollers:
+            self._restart_microcontroller()
+
+        except Exception as e:
+            print(f"Fehler beim Speichern der Konfiguration: {e}")
+
+    def _restart_microcontroller(self):
+        """
+        Führt einen Neustart des Mikrocontrollers aus, um neue Einstellungen zu übernehmen.
+        In einer realen Implementierung würde hier ein Systemaufruf, GPIO-Toggle o.ä. stehen.
+        """
+        print("Mikrocontroller wird neu gestartet...")
+        # Beispiel: os.system("sudo reboot")  # Achtung: Nur falls wirklich gewünscht
 
 
 # ===================================================================
@@ -107,7 +135,7 @@ class Sensor:
 
         :param pin_number: Die Nummer des GPIO-Pins (z.B. 15 für GP15).
         """
-        pass
+        self.sensor = dht.DHT11(getattr(board, f"GP{pin_number}"))
 
     def read_data(self) -> dict | None:
         """
@@ -116,7 +144,8 @@ class Sensor:
         :return: Ein Dictionary wie {'temperature': 22.5, 'humidity': 45.8}
                  oder None, falls das Auslesen fehlschlägt.
         """
-        pass
+        dict_sensor_data = {'temperature': self.sensor.temperature, 'humidity': self.sensor.humidity}
+        return dict_sensor_data
 
 
 # ===================================================================
@@ -224,6 +253,10 @@ class WebServer:
 #      -> Währenddessen Status-LED blinken lassen.
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
 #    - WebServer starten.
+sensor = Sensor(pin_number=22)
+while True:
+    time.sleep(3)
+    print(sensor.read_data())
 
 # 2. VERBINDUNGSAUFBAU
 #    - Mit dem MqttClient zum Broker verbinden.
