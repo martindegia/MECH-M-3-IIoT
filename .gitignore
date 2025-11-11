@@ -5,3 +5,4 @@ __pycache__/
 .pdm-python
 /.quarto/
 _site/
+**/settings.toml
