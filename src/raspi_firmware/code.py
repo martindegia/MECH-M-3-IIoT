@@ -247,22 +247,11 @@ class WebServer:
 configManager = ConfigManager(filepath="settings.toml")
 config = configManager.load_settings()
 
-print(config)
-
 networkManager = NetworkManager(config["wifi_ssid"], config["wifi_password"])
-if not NetworkManager.connect():
-    for _ in range(5):
-        print("Verbindung zum WLAN fehlgeschlagen. Retry in 5 Sekunden.")
-        time.sleep(5)
-        isconnected = networkManager.connect()
-        if isconnected:
-            break
-    if not isconnected:
-        print("Konnte keine Verbindung zum WLAN herstellen. Starte im Offline-Modus.")
-        sensor = Sensor(pin_number=22)
-        while True:
-            time.sleep(3)
-            print(sensor.read_data())
+if not networkManager.is_connected():
+    networkManager.connect()
+    print("IP-Adresse:", networkManager.get_ip())
+
 #      -> Währenddessen Status-LED blinken lassen.
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
 sensor = Sensor(pin_number=22)
