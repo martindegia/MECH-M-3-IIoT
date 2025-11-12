@@ -60,7 +60,8 @@ class ConfigManager:
 
         :param settings: Das Dictionary mit den zu speichernden Einstellungen.
         """
-        pass
+        with open(self.filepath, "wb") as f:
+            toml.dump(settings, f)
 
 # ===================================================================
 # KLASSE: NetworkManager
