@@ -19,6 +19,7 @@ import time
 import adafruit_dht as dht
 import board
 import toml
+import wifi
 
 # ===================================================================
 # KLASSE: ConfigManager
@@ -88,7 +89,15 @@ class NetworkManager:
 
         :return: True bei erfolgreicher Verbindung, ansonsten False.
         """
-        pass
+        for attempt in range(5):
+            try:
+                wifi.radio.connect(self.ssid, self.password)
+                print(f"Mit WLAN '{self.ssid}' verbunden.")
+                return True
+            except Exception as e:
+                print(f"Verbindungsversuch {attempt + 1} fehlgeschlagen: {e}")
+                time.sleep(3)
+        return False
 
     def is_connected(self) -> bool:
         """
