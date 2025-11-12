@@ -142,6 +142,7 @@ class Sensor:
         :return: Ein Dictionary wie {'temperature': 22.5, 'humidity': 45.8}
                  oder None, falls das Auslesen fehlschlägt.
         """
+        
         dict_sensor_data = {'temperature': self.sensor.temperature, 'humidity': self.sensor.humidity}
         return dict_sensor_data
 
@@ -247,14 +248,9 @@ class WebServer:
 # 1. INITIALISIERUNG
 #    - Status-LED initialisieren.
 #    - ConfigManager erstellen und Konfiguration aus "settings.toml" laden.
-#    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
-#      -> Währenddessen Status-LED blinken lassen.
-#    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
-#    - WebServer starten.
-sensor = Sensor(pin_number=22)
 configManager = ConfigManager(filepath="settings.toml")
 config = configManager.load_settings()
-
+#    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
 networkManager = NetworkManager(config["wifi_ssid"], config["wifi_password"])
 if not NetworkManager.connect():
     for _ in range(5):
@@ -265,21 +261,56 @@ if not NetworkManager.connect():
             break
     if not isconnected:
         print("Konnte keine Verbindung zum WLAN herstellen. Starte im Offline-Modus.")
+        sensor = Sensor(pin_number=22)
         while True:
             time.sleep(3)
             print(sensor.read_data())
+#      -> Währenddessen Status-LED blinken lassen.
+#    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
+sensor = Sensor(pin_number=22)
+mqttClient = MqttClient(config)
+webServer = WebServer(configManager)
+#    - WebServer starten.
+webServer.start()
 
-
-while True:
-    time.sleep(3)
-    print(sensor.read_data())
+    
 
 # 2. VERBINDUNGSAUFBAU
 #    - Mit dem MqttClient zum Broker verbinden.
+mqttClient.connect()
 #    - Eine "online"-Statusnachricht senden.
+mqttClient.publish_status("online")
 #    - Status-LED auf "dauerhaft an" setzen, um Betriebsbereitschaft zu signalisieren.
 
 # 3. HAUPTSCHLEIFE (Endlosschleife)
+t = time.time()
+while True:
+    mqttClient.loop()
+    webServer.poll()
+    if (time.time() - t) >= config["reading_interval_seconds"]:
+        t = time.time()
+        data = sensor.read_data()
+        if data:
+            mqttClient.publish_telemetry(data)
+            print("Daten gesendet:", data)
+        else:
+            print("Fehler beim Auslesen der Sensordaten.")
+
+    if (time.time() - t) >= 1:
+        if not networkManager.is_connected():
+            print("WLAN-Verbindung verloren. Versuche, erneut zu verbinden...")
+            if networkManager.connect():
+                print("WLAN-Verbindung wiederhergestellt.")
+            else:
+                print("Erneuter Verbindungsversuch fehlgeschlagen.")
+
+        if not mqttClient.is_connected():
+            print("MQTT-Verbindung verloren. Versuche, erneut zu verbinden...")
+            try:
+                mqttClient.connect()
+                print("MQTT-Verbindung wiederhergestellt.")
+            except Exception as e:
+                print(f"Erneuter Verbindungsversuch fehlgeschlagen: {e}")
 #    - while True:
 #        - MqttClient.loop() aufrufen, um die Verbindung zu halten.
 #        - WebServer.poll() aufrufen, um Konfigurationsanfragen zu prüfen.
