@@ -129,8 +129,11 @@ class Sensor:
         :return: Ein Dictionary wie {'temperature': 22.5, 'humidity': 45.8}
                  oder None, falls das Auslesen fehlschlägt.
         """
-        sensor_data = {'temperature': self.sensor.temperature, 'humidity': self.sensor.humidity}
-        return sensor_data
+        temperature = self.sensor.temperature
+        humidity = self.sensor.humidity
+        if temperature is None or humidity is None:
+            return None
+        return {'temperature': temperature, 'humidity': humidity} 
 
 
 # ===================================================================
