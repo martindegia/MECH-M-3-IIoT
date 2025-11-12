@@ -105,7 +105,7 @@ class NetworkManager:
 
         :return: True, wenn eine WLAN-Verbindung besteht, ansonsten False.
         """
-        pass
+        return wifi.radio.connected
 
     def get_ip(self) -> str:
         """
