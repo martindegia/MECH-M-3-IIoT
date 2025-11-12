@@ -18,6 +18,7 @@ import os
 import time
 import adafruit_dht as dht
 import board
+import toml
 
 # ===================================================================
 # KLASSE: ConfigManager
@@ -43,7 +44,7 @@ class ConfigManager:
         """
         try:
             with open(self.filepath, "rb") as f:
-                settings = os.getenv()
+                settings = toml.load(f)
             return settings
         except FileNotFoundError:
             print(f"Die Datei '{self.filepath}' wurde nicht gefunden.")
@@ -59,22 +60,7 @@ class ConfigManager:
 
         :param settings: Das Dictionary mit den zu speichernden Einstellungen.
         """
-        try:
-            print(f"Einstellungen wurden in '{self.filepath}' gespeichert.")
-            
-            self._restart_microcontroller()
-
-        except Exception as e:
-            print(f"Fehler beim Speichern der Konfiguration: {e}")
-
-    def _restart_microcontroller(self):
-        """
-        Führt einen Neustart des Mikrocontrollers aus, um neue Einstellungen zu übernehmen.
-        In einer realen Implementierung würde hier ein Systemaufruf, GPIO-Toggle o.ä. stehen.
-        """
-        print("Mikrocontroller wird neu gestartet...")
-        # Beispiel: os.system("sudo reboot")  # Achtung: Nur falls wirklich gewünscht
-
+        pass
 
 # ===================================================================
 # KLASSE: NetworkManager
@@ -91,7 +77,8 @@ class NetworkManager:
         :param ssid: Der Name des WLAN-Netzwerks (SSID).
         :param password: Das Passwort für das WLAN-Netzwerk.
         """
-        pass
+        self.ssid = ssid
+        self.password = password
 
     def connect(self) -> bool:
         """
@@ -142,9 +129,8 @@ class Sensor:
         :return: Ein Dictionary wie {'temperature': 22.5, 'humidity': 45.8}
                  oder None, falls das Auslesen fehlschlägt.
         """
-        
-        dict_sensor_data = {'temperature': self.sensor.temperature, 'humidity': self.sensor.humidity}
-        return dict_sensor_data
+        sensor_data = {'temperature': self.sensor.temperature, 'humidity': self.sensor.humidity}
+        return sensor_data
 
 
 # ===================================================================
@@ -250,7 +236,9 @@ class WebServer:
 #    - ConfigManager erstellen und Konfiguration aus "settings.toml" laden.
 configManager = ConfigManager(filepath="settings.toml")
 config = configManager.load_settings()
-#    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
+
+print(config)
+
 networkManager = NetworkManager(config["wifi_ssid"], config["wifi_password"])
 if not NetworkManager.connect():
     for _ in range(5):
