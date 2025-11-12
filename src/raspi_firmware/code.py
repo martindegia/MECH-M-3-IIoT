@@ -47,9 +47,6 @@ class ConfigManager:
             with open(self.filepath, "rb") as f:
                 settings = toml.load(f)
             return settings
-        except FileNotFoundError:
-            print(f"Die Datei '{self.filepath}' wurde nicht gefunden.")
-            return {}
         except Exception as e:
             print(f"Fehler beim Laden der Konfiguration: {e}")
             return {}
