@@ -44,7 +44,7 @@ class ConfigManager:
         :return: Ein Dictionary mit allen geladenen Einstellungen.
         """
         try:
-            with open(self.filepath, "rb") as f:
+            with open(self.filepath, "r") as f:
                 settings = toml.load(f)
             return settings
         except Exception as e:
@@ -58,7 +58,7 @@ class ConfigManager:
 
         :param settings: Das Dictionary mit den zu speichernden Einstellungen.
         """
-        with open(self.filepath, "wb") as f:
+        with open(self.filepath, "w") as f:
             toml.dump(settings, f)
 
 # ===================================================================
