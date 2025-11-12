@@ -113,7 +113,7 @@ class NetworkManager:
 
         :return: Die IP-Adresse als String (z.B. "192.168.1.100").
         """
-        pass
+        return str(wifi.radio.ipv4_address)
 
 
 # ===================================================================
