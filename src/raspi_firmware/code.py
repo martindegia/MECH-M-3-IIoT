@@ -182,6 +182,7 @@ class MqttClient:
         Verbindet sich mit dem MQTT-Broker und setzt eine "Last Will and Testament"
         Nachricht, die gesendet wird, falls das Gerät unerwartet die Verbindung verliert.
         """
+        self.mqtt_client.will_set(self.status_topic, "offline", retain=True)
         self.mqtt_client.connect()
 
     def publish_telemetry(self, data: dict):
