@@ -14,13 +14,13 @@
 # ----------- Bibliotheken importieren -----------
 # Hier werden später alle benötigten CircuitPython-Bibliotheken importiert
 # z.B. import board, time, wifi, adafruit_dht, etc.
-import os
 import time
 import adafruit_dht as dht
 import board
 import toml
 import wifi
-
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
+import adafruit_connection_manager
 # ===================================================================
 # KLASSE: ConfigManager
 # ===================================================================
@@ -157,14 +157,31 @@ class MqttClient:
 
         :param config: Ein Dictionary mit den MQTT-Einstellungen.
         """
-        pass
+        self.broker_address = config["broker_address"]
+        self.broker_port = config["broker_port"]
+        self.mqtt_username = config["mqtt_username"]
+        self.mqtt_password = config["mqtt_password"]
+        self.telemetry_topic = config["telemetry_topic"]
+        self.status_topic = config["status_topic"]
+
+        pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
+        ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
+        
+        self.mqtt_client = MQTT.MQTT(
+            broker=self.broker_address,
+            port=self.broker_port,
+            username=self.mqtt_username,
+            password=self.mqtt_password,
+            socket_pool=pool,
+            ssl_context=ssl_context
+        )
 
     def connect(self):
         """
         Verbindet sich mit dem MQTT-Broker und setzt eine "Last Will and Testament"
         Nachricht, die gesendet wird, falls das Gerät unerwartet die Verbindung verliert.
         """
-        pass
+        self.mqtt_client.connect()
 
     def publish_telemetry(self, data: dict):
         """
@@ -173,7 +190,7 @@ class MqttClient:
 
         :param data: Das Dictionary mit den Sensordaten.
         """
-        pass
+        self.mqtt_client.publish(self.telemetry_topic, data)
 
     def publish_status(self, status: str):
         """
@@ -182,14 +199,14 @@ class MqttClient:
 
         :param status: Die zu sendende Statusnachricht.
         """
-        pass
+        self.mqtt_client.publish(self.status_topic, status)
 
     def loop(self):
         """
         Hält die MQTT-Verbindung aktiv. Muss regelmäßig in der Hauptschleife
         aufgerufen werden.
         """
-        pass
+        self.mqtt_client.loop(timeout=1)
 
 
 # ===================================================================
@@ -254,7 +271,7 @@ if not networkManager.is_connected():
 
 #      -> Währenddessen Status-LED blinken lassen.
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
-sensor = Sensor(pin_number=22)
+sensor = Sensor(pin_number=config["sensor_pin"])
 mqttClient = MqttClient(config)
 webServer = WebServer(configManager)
 #    - WebServer starten.
