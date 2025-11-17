@@ -15,6 +15,7 @@
 # Hier werden später alle benötigten CircuitPython-Bibliotheken importiert
 # z.B. import board, time, wifi, adafruit_dht, etc.
 import time
+from adafruit_datetime import datetime, timezone
 import adafruit_dht as dht
 import board
 import digitalio
@@ -22,6 +23,7 @@ import toml
 import wifi
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_connection_manager
+import json
 # ===================================================================
 # KLASSE: ConfigManager
 # ===================================================================
@@ -164,6 +166,7 @@ class MqttClient:
         self.mqtt_password = config["mqtt_password"]
         self.telemetry_topic = config["telemetry_topic"]
         self.status_topic = config["status_topic"]
+        self.device_id = config["device_id"]
 
         pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
         ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
@@ -192,7 +195,30 @@ class MqttClient:
 
         :param data: Das Dictionary mit den Sensordaten.
         """
-        self.mqtt_client.publish(self.telemetry_topic, str(data))
+        timestamp = datetime.now().isoformat()
+        status = "ok" if data else "error"
+
+        temp_payload = {
+            "timestamp": timestamp,
+            "sensor_id": self.device_id,
+            "value": data.get("temperature"),
+            "unit": "°C",
+            "status": status
+        }
+
+        humidity_payload = {
+            "timestamp": timestamp,
+            "sensor_id": self.device_id,
+            "value": data.get("humidity"),
+            "unit": "%",
+            "status": status
+        }
+
+        temperature_json = json.dumps(temp_payload)
+        humidity_json = json.dumps(humidity_payload)
+
+        self.mqtt_client.publish(self.telemetry_topic+"/temperature", temperature_json)
+        self.mqtt_client.publish(self.telemetry_topic+"/humidity", humidity_json)
 
     def publish_status(self, status: str):
         """
