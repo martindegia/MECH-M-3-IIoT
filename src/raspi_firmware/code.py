@@ -192,7 +192,7 @@ class MqttClient:
 
         :param data: Das Dictionary mit den Sensordaten.
         """
-        self.mqtt_client.publish(self.telemetry_topic, data)
+        self.mqtt_client.publish(self.telemetry_topic, str(data))
 
     def publish_status(self, status: str):
         """
