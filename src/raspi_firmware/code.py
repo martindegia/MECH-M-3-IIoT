@@ -17,6 +17,7 @@
 import time
 import adafruit_dht as dht
 import board
+import digitalio
 import toml
 import wifi
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
@@ -260,33 +261,57 @@ class WebServer:
 
 # 1. INITIALISIERUNG
 #    - Status-LED initialisieren.
+led = digitalio.DigitalInOut(board.LED)
+led.direction = digitalio.Direction.OUTPUT
+
 #    - ConfigManager erstellen und Konfiguration aus "settings.toml" laden.
 configManager = ConfigManager(filepath="settings.toml")
 config = configManager.load_settings()
 
-networkManager = NetworkManager(config["wifi_ssid"], config["wifi_password"])
-if not networkManager.is_connected():
-    networkManager.connect()
-    print("IP-Adresse:", networkManager.get_ip())
-
+#    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
 #      -> Währenddessen Status-LED blinken lassen.
+networkManager = NetworkManager(ssid=config["wifi_ssid"], password=config["wifi_password"])
+while not networkManager.is_connected():
+    led.value = not led.value
+    time.sleep(0.5)
+    networkManager.connect()
+print("IP-Adresse:", networkManager.get_ip())
+
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
 sensor = Sensor(pin_number=config["sensor_pin"])
-mqttClient = MqttClient(config)
-webServer = WebServer(configManager)
+mqttClient = MqttClient(config=config)
+webServer = WebServer(config_manager=configManager)
+
 #    - WebServer starten.
 webServer.start()
 
-    
 
 # 2. VERBINDUNGSAUFBAU
 #    - Mit dem MqttClient zum Broker verbinden.
 mqttClient.connect()
+
 #    - Eine "online"-Statusnachricht senden.
 mqttClient.publish_status("online")
+
 #    - Status-LED auf "dauerhaft an" setzen, um Betriebsbereitschaft zu signalisieren.
+led.value = True
+
 
 # 3. HAUPTSCHLEIFE (Endlosschleife)
+#    - while True:
+#        - MqttClient.loop() aufrufen, um die Verbindung zu halten.
+#        - WebServer.poll() aufrufen, um Konfigurationsanfragen zu prüfen.
+#
+#        - Prüfen, ob das Sende-Intervall (reading_interval_seconds) abgelaufen ist.
+#        - WENN ja:
+#            a. Daten vom Sensor lesen (Sensor.read_data()).
+#            b. WENN Daten gültig sind:
+#               - Telemetrie über den MqttClient veröffentlichen.
+#            c. WENN Daten ungültig sind:
+#               - Fehler loggen oder anzeigen (z.B. durch Blinken der LED).
+#
+#        - Fehlerbehandlung für getrennte WLAN- oder MQTT-Verbindungen implementieren
+#          und versuchen, die Verbindung wiederherzustellen.
 t = time.time()
 while True:
     mqttClient.loop()
@@ -315,17 +340,3 @@ while True:
                 print("MQTT-Verbindung wiederhergestellt.")
             except Exception as e:
                 print(f"Erneuter Verbindungsversuch fehlgeschlagen: {e}")
-#    - while True:
-#        - MqttClient.loop() aufrufen, um die Verbindung zu halten.
-#        - WebServer.poll() aufrufen, um Konfigurationsanfragen zu prüfen.
-#
-#        - Prüfen, ob das Sende-Intervall (reading_interval_seconds) abgelaufen ist.
-#        - WENN ja:
-#            a. Daten vom Sensor lesen (Sensor.read_data()).
-#            b. WENN Daten gültig sind:
-#               - Telemetrie über den MqttClient veröffentlichen.
-#            c. WENN Daten ungültig sind:
-#               - Fehler loggen oder anzeigen (z.B. durch Blinken der LED).
-#
-#        - Fehlerbehandlung für getrennte WLAN- oder MQTT-Verbindungen implementieren
-#          und versuchen, die Verbindung wiederherzustellen.
