@@ -326,6 +326,7 @@ while True:
         else:
             print("Fehler beim Auslesen der Sensordaten.")
 
+    # check every second for connection issues
     if (time.time() - t) >= 1:
         if not networkManager.is_connected():
             print("WLAN-Verbindung verloren. Versuche, erneut zu verbinden...")
@@ -334,7 +335,7 @@ while True:
             else:
                 print("Erneuter Verbindungsversuch fehlgeschlagen.")
 
-        if not mqttClient.is_connected():
+        if not mqttClient.mqtt_client.is_connected():
             print("MQTT-Verbindung verloren. Versuche, erneut zu verbinden...")
             try:
                 mqttClient.connect()
