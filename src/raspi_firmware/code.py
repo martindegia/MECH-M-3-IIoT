@@ -160,22 +160,16 @@ class MqttClient:
 
         :param config: Ein Dictionary mit den MQTT-Einstellungen.
         """
-        self.broker_address = config["broker_address"]
-        self.broker_port = config["broker_port"]
-        self.mqtt_username = config["mqtt_username"]
-        self.mqtt_password = config["mqtt_password"]
-        self.telemetry_topic = config["telemetry_topic"]
-        self.status_topic = config["status_topic"]
-        self.device_id = config["device_id"]
+        self.config = config
 
         pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
         ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
         
         self.mqtt_client = MQTT.MQTT(
-            broker=self.broker_address,
-            port=self.broker_port,
-            username=self.mqtt_username,
-            password=self.mqtt_password,
+            broker=self.config["broker_address"],
+            port=self.config["broker_port"],
+            username=self.config["mqtt_username"],
+            password=self.config["mqtt_password"],
             socket_pool=pool,
             ssl_context=ssl_context
         )
@@ -200,7 +194,7 @@ class MqttClient:
 
         temp_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.device_id,
+            "sensor_id": self.config["device_id"],
             "value": data.get("temperature"),
             "unit": "°C",
             "status": status
@@ -208,7 +202,7 @@ class MqttClient:
 
         humidity_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.device_id,
+            "sensor_id": self.config["device_id"],
             "value": data.get("humidity"),
             "unit": "%",
             "status": status
