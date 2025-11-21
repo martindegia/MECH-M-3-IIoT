@@ -24,6 +24,7 @@ import wifi
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_connection_manager
 import json
+import socketpool
 # ===================================================================
 # KLASSE: ConfigManager
 # ===================================================================
@@ -249,34 +250,169 @@ class WebServer:
         :param config_manager: Eine Instanz des ConfigManagers, um Einstellungen
                                zu lesen und zu speichern.
         """
-        pass
+        self.config_manager = config_manager
+        self.pool = socketpool.SocketPool(wifi.radio)
+        self.server_socket = None
+        self.port = 8080
 
     def start(self):
         """
         Startet den Webserver, sodass er auf Anfragen lauscht.
         """
-        pass
+        self.server_socket = self.pool.socket()
+        self.server_socket.bind(("0.0.0.0", self.port))
+        self.server_socket.listen(1)
+
+        print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
+
+        while True:
+            client, addr = self.server_socket.accept()
+            print("Neue Verbindung von", addr)
+
+            buffer = bytearray(1024)       # Puffer anlegen
+            size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
+
+            if size > 0:
+                request = buffer[:size].decode("utf-8")  # in String umwandeln
+            if request:
+                request_str = request
+                print("Request:", request_str)
+
+                # Sehr einfache Auswertung
+                if "GET / " in request_str:
+                    body = "<h1>Pico W Webserver läuft!</h1>"
+                else:
+                    body = "<h1>404 - Nicht gefunden</h1>"
+
+                response = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/html\r\n"
+                    f"Content-Length: {len(body)}\r\n"
+                    "Connection: close\r\n"
+                    "\r\n"
+                    f"{body}"
+                )
+
+                client.send(response.encode())
+
+            client.close()
 
     def poll(self):
         """
         Verarbeitet eine einzelne anstehende HTTP-Anfrage. Muss in der
         Hauptschleife des Programms aufgerufen werden.
         """
-        pass
+
+        try:
+            client, addr = self.server_socket.accept()
+        except:
+            return  # keine Anfrage vorhanden -> nicht blockieren
+
+        buffer = bytearray(2048)
+        size = client.recv_into(buffer)
+
+        if size <= 0:
+            client.close()
+            return
+
+        request = buffer[:size].decode("utf-8")
+
+        if not request:
+            client.close()
+            return
+
+        request_line = request.split("\r\n")[0]
+
+        if request_line.startswith("GET"):
+            response = self._handle_get_request(request)
+        elif request_line.startswith("POST"):
+            response = self._handle_post_request(request)
+        else:
+            body = "<h1>400 - Bad Request</h1>"
+            response = (
+                "HTTP/1.1 400 Bad Request\r\n"
+                "Content-Type: text/html\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Connection: close\r\n\r\n"
+                f"{body}"
+            )
+
+        client.send(response.encode("utf-8"))
+        client.close()
+
 
     def _handle_get_request(self, request):
         """
         Interne Methode: Bearbeitet GET-Anfragen und liefert das
         HTML-Konfigurationsformular aus.
         """
-        pass
+
+        body = """
+        <html>
+        <body>
+            <h1>Pico W Konfiguration</h1>
+            <form method="POST">
+                Name: <input name="name"><br><br>
+                Wert: <input name="value"><br><br>
+                <button type="submit">Speichern</button>
+            </form>
+        </body>
+        </html>
+        """
+
+        return (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Connection: close\r\n\r\n"
+            f"{body}"
+        )
+
 
     def _handle_post_request(self, request):
         """
-        Interne Methode: Bearbeitet POST-Anfragen vom Formular, speichert
-        die neuen Einstellungen und löst einen Neustart aus.
+        Interne Methode: Bearbeitet POST-Anfragen vom Formular,
+        speichert die neuen Einstellungen und löst einen Neustart aus.
         """
-        pass
+
+        # Header und Body trennen
+        parts = request.split("\r\n\r\n", 1)
+        body = parts[1] if len(parts) > 1 else ""
+
+        # POST-Formulardaten parsen (key=value&key2=value2)
+        data = {}
+        if "=" in body:
+            for pair in body.split("&"):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    data[key] = value
+
+        # Beispiel: Weiterverwendung oder Speicherung
+        # Du kannst hier auch Datei schreiben usw.
+        # print("POST-Daten:", data)
+
+        confirmation = f"""
+        <html>
+        <body>
+            <h1>Gespeichert!</h1>
+            <p>Name: {data.get("name")}</p>
+            <p>Wert: {data.get("value")}</p>
+            <p>Der Pico startet gleich neu...</p>
+        </body>
+        </html>
+        """
+
+        # Neustart — wenn du möchtest
+        # microcontroller.reset()
+
+        return (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            f"Content-Length: {len(confirmation)}\r\n"
+            "Connection: close\r\n\r\n"
+            f"{confirmation}"
+        )
+
 
 
 # ===================================================================
