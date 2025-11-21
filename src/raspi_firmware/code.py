@@ -292,10 +292,14 @@ config = configManager.load_settings()
 #    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
 #      -> Währenddessen Status-LED blinken lassen.
 networkManager = NetworkManager(ssid=config["wifi_ssid"], password=config["wifi_password"])
-while not networkManager.is_connected():
+if not networkManager.is_connected():
     led.value = not led.value
-    time.sleep(0.5)
     networkManager.connect()
+if not networkManager.is_connected():
+    print("Fehler: Keine WLAN-Verbindung möglich.")
+    while True:
+        led.value = not led.value
+        time.sleep(0.5)
 print("IP-Adresse:", networkManager.get_ip())
 
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
