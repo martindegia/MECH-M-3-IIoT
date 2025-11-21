@@ -265,77 +265,34 @@ class WebServer:
 
         print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
 
-        while True:
-            client, addr = self.server_socket.accept()
-            print("Neue Verbindung von", addr)
-
-            buffer = bytearray(1024)       # Puffer anlegen
-            size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
-
-            if size > 0:
-                request = buffer[:size].decode("utf-8")  # in String umwandeln
-            if request:
-                request_str = request
-                print("Request:", request_str)
-
-                # Sehr einfache Auswertung
-                if "GET / " in request_str:
-                    body = "<h1>Pico W Webserver läuft!</h1>"
-                else:
-                    body = "<h1>404 - Nicht gefunden</h1>"
-
-                response = (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/html\r\n"
-                    f"Content-Length: {len(body)}\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    f"{body}"
-                )
-
-                client.send(response.encode())
-
-            client.close()
-
     def poll(self):
         """
         Verarbeitet eine einzelne anstehende HTTP-Anfrage. Muss in der
         Hauptschleife des Programms aufgerufen werden.
         """
 
-        try:
-            client, addr = self.server_socket.accept()
-        except:
-            return  # keine Anfrage vorhanden -> nicht blockieren
+        client, addr = self.server_socket.accept()
+        print("Neue Verbindung von", addr)
 
-        buffer = bytearray(2048)
-        size = client.recv_into(buffer)
+        buffer = bytearray(1024)       # Puffer anlegen
+        size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
 
-        if size <= 0:
-            client.close()
-            return
-
-        request = buffer[:size].decode("utf-8")
-
-        if not request:
-            client.close()
-            return
-
-        request_line = request.split("\r\n")[0]
-
-        if request_line.startswith("GET"):
-            response = self._handle_get_request(request)
-        elif request_line.startswith("POST"):
-            response = self._handle_post_request(request)
-        else:
-            body = "<h1>400 - Bad Request</h1>"
-            response = (
-                "HTTP/1.1 400 Bad Request\r\n"
-                "Content-Type: text/html\r\n"
-                f"Content-Length: {len(body)}\r\n"
-                "Connection: close\r\n\r\n"
-                f"{body}"
-            )
+        if size > 0:
+            request = buffer[:size].decode("utf-8")
+        if request:      
+            if "GET / " in request:
+                response = self._handle_get_request(request)
+            elif "POST / " in request:  # request_line.startswith("POST"):
+                response = self._handle_post_request(request)
+            else:
+                body = "<h1>400 - Bad Request</h1>"
+                response = (
+                    "HTTP/1.1 400 Bad Request\r\n"
+                    "Content-Type: text/html\r\n"
+                    f"Content-Length: {len(body)}\r\n"
+                    "Connection: close\r\n\r\n"
+                    f"{body}"
+                )
 
         client.send(response.encode("utf-8"))
         client.close()

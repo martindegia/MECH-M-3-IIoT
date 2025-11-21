@@ -6,3 +6,4 @@ __pycache__/
 /.quarto/
 _site/
 src/raspi_firmware/settings.toml
+.pdm-python
