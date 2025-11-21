@@ -284,6 +284,14 @@ class WebServer:
                 raise
 
         self.server_socket.listen(1)
+        # # Setze Socket auf non-blocking
+        # try:
+        #     self.server_socket.setblocking(False)
+        # except Exception:
+        #     try:
+        #         self.server_socket.settimeout(0)
+        #     except Exception:
+        #         print("Warnung: Socket konnte nicht non-blocking gesetzt werden.")
 
         print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
 
@@ -293,7 +301,11 @@ class WebServer:
         Hauptschleife des Programms aufgerufen werden.
         """
 
-        client, addr = self.server_socket.accept()
+        try:
+            client, addr = self.server_socket.accept()
+        except Exception:
+            # Kein Client wartet, poll kehrt sofort zurück
+            return
         print("Neue Verbindung von", addr)
 
         buffer = bytearray(1024)       # Puffer anlegen
@@ -384,27 +396,18 @@ class WebServer:
         print("POST-Body:", body)
 
         # POST-Formulardaten parsen (key=value&key2=value2)
-        settings = configManager.load_settings()
-        key = ""
-        value = ""
-        if "=" in body:
-            key, value = body.split("=", 1)
+        new_settings = json.loads(body)
+        settings = self.configManager.load_settings()
+        for key, value in new_settings.items():
             settings[key] = value
-
-        # Beispiel: Weiterverwendung oder Speicherung
-        # Du kannst hier auch Datei schreiben usw.
-        # print("POST-Daten:", data)
-
-        confirmation = f"{{ {key}: {value} }}"
-        # Neustart — wenn du möchtest
-        # microcontroller.reset()
-
+        self.config_manager.save_settings(settings)
+        
         return (
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n"
-            f"Content-Length: {len(confirmation)}\r\n"
+            f"Content-Length: {len(settings)}\r\n"
             "Connection: close\r\n\r\n"
-            f"{confirmation}"
+            f"{settings}"
         )
 
 
