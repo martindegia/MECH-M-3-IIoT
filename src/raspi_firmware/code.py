@@ -302,10 +302,15 @@ class WebServer:
         if size > 0:
             request = buffer[:size].decode("utf-8")
             print("Anfrage:\n", request)
-        if request:      
-            if "GET / " in request:
-                response = self._handle_get_request(request)
-            elif "POST / " in request:  # request_line.startswith("POST"):
+        if request:    
+            request_line = request.split("\r\n", 1)[0]
+            parts = request_line.split()
+            method = parts[0] if len(parts) > 0 else "GET"
+            path = parts[1] if len(parts) > 1 else "/"  
+            print(f"Empfangene Anfrage: Methode={method}, Pfad={path}")
+            if "GET" == method:
+                response = self._handle_get_request(path)
+            elif "POST" == method:
                 response = self._handle_post_request(request)
             else:
                 body = "<h1>400 - Bad Request</h1>"
@@ -326,17 +331,45 @@ class WebServer:
         Interne Methode: Bearbeitet GET-Anfragen und liefert das
         HTML-Konfigurationsformular aus.
         """
-        body = ""
         settings = self.config_manager.load_settings()
-        body = json.dumps(settings)
 
-        return (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: application/json\r\n"
-            f"Content-Length: {len(body)}\r\n"
-            "Connection: close\r\n\r\n"
-            f"{body}"
-        )
+        # Wenn Pfad genau "/" dann ganze Konfiguration zurückgeben
+        if not request or request == "/":
+            body = json.dumps(settings)
+            return (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Connection: close\r\n\r\n"
+                f"{body}"
+            )
+
+        # Pfad bereinigen: /key oder /key?query -> key
+        key = request.lstrip("/")
+        if "?" in key:
+            key = key.split("?", 1)[0]
+
+        print(f"Angeforderter Schlüssel: {key}")
+        if key in settings:
+            value = settings[key]
+            # Gebe einzelnen Wert als JSON zurück
+            body = json.dumps({key: value})
+            return (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Connection: close\r\n\r\n"
+                f"{body}"
+            )
+        else:
+            body = json.dumps({"error": "not found"})
+            return (
+                "HTTP/1.1 404 Not Found\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Connection: close\r\n\r\n"
+                f"{body}"
+            )
 
 
     def _handle_post_request(self, request):
@@ -348,6 +381,7 @@ class WebServer:
         # Header und Body trennen
         parts = request.split("\r\n\r\n", 1)
         body = parts[1] if len(parts) > 1 else ""
+        print("POST-Body:", body)
 
         # POST-Formulardaten parsen (key=value&key2=value2)
         settings = configManager.load_settings()
