@@ -284,6 +284,7 @@ class WebServer:
                 raise
 
         self.server_socket.listen(1)
+        # TODO: Non-blocking Socket implementieren
         # # Setze Socket auf non-blocking
         # try:
         #     self.server_socket.setblocking(False)
@@ -345,6 +346,7 @@ class WebServer:
         """
         settings = self.config_manager.load_settings()
 
+        # TODO: nicht passwort im Klartext zurückgeben
         # Wenn Pfad genau "/" dann ganze Konfiguration zurückgeben
         if not request or request == "/":
             body = json.dumps(settings)
