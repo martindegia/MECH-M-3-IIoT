@@ -283,7 +283,7 @@ class WebServer:
             if "GET / " in request:
                 response = self._handle_get_request(request)
             elif "POST / " in request:  # request_line.startswith("POST"):
-                response = self._handle_get_request(request)
+                response = self._handle_post_request(request)
             else:
                 body = "<h1>400 - Bad Request</h1>"
                 response = (
@@ -345,28 +345,18 @@ class WebServer:
         body = parts[1] if len(parts) > 1 else ""
 
         # POST-Formulardaten parsen (key=value&key2=value2)
-        data = {}
+        settings = configManager.load_settings()
+        key = ""
+        value = ""
         if "=" in body:
-            for pair in body.split("&"):
-                if "=" in pair:
-                    key, value = pair.split("=", 1)
-                    data[key] = value
+            key, value = body.split("=", 1)
+            settings[key] = value
 
         # Beispiel: Weiterverwendung oder Speicherung
         # Du kannst hier auch Datei schreiben usw.
         # print("POST-Daten:", data)
 
-        confirmation = f"""
-        <html>
-        <body>
-            <h1>Gespeichert!</h1>
-            <p>Name: {data.get("name")}</p>
-            <p>Wert: {data.get("value")}</p>
-            <p>Der Pico startet gleich neu...</p>
-        </body>
-        </html>
-        """
-
+        confirmation = f"{{ {key}: {value} }}"
         # Neustart — wenn du möchtest
         # microcontroller.reset()
 
