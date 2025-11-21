@@ -283,7 +283,7 @@ class WebServer:
             if "GET / " in request:
                 response = self._handle_get_request(request)
             elif "POST / " in request:  # request_line.startswith("POST"):
-                response = self._handle_post_request(request)
+                response = self._handle_get_request(request)
             else:
                 body = "<h1>400 - Bad Request</h1>"
                 response = (
@@ -303,23 +303,31 @@ class WebServer:
         Interne Methode: Bearbeitet GET-Anfragen und liefert das
         HTML-Konfigurationsformular aus.
         """
-
-        body = """
-        <html>
-        <body>
-            <h1>Pico W Konfiguration</h1>
-            <form method="POST">
-                Name: <input name="name"><br><br>
-                Wert: <input name="value"><br><br>
-                <button type="submit">Speichern</button>
-            </form>
-        </body>
-        </html>
-        """
+        body = ""
+        settings = self.config_manager.load_settings()
+        body = json.dumps(settings)
+        # if not request:
+        #     body = json.dumps(settings)
+        #     # for key, value in settings.items():
+        #     #     body = body + (f"\"{key}\": \"{value}\"")
+        # else:
+        #     body = json.dumps(settings[request])
+        # body = """
+        # <html>
+        # <body>
+        #     <h1>Pico W Konfiguration</h1>
+        #     <form method="POST">
+        #         Name: <input name="name"><br><br>
+        #         Wert: <input name="value"><br><br>
+        #         <button type="submit">Speichern</button>
+        #     </form>
+        # </body>
+        # </html>
+        # """
 
         return (
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
+            "Content-Type: application/json\r\n"
             f"Content-Length: {len(body)}\r\n"
             "Connection: close\r\n\r\n"
             f"{body}"
