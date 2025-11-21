@@ -180,6 +180,7 @@ class MqttClient:
         Verbindet sich mit dem MQTT-Broker und setzt eine "Last Will and Testament"
         Nachricht, die gesendet wird, falls das Gerät unerwartet die Verbindung verliert.
         """
+        print("Verbinde mit MQTT-Broker...")
         self.mqtt_client.will_set(self.config["status_topic"], "offline", retain=True)
         self.mqtt_client.connect()
 
@@ -225,6 +226,7 @@ class MqttClient:
 
         :param status: Die zu sendende Statusnachricht.
         """
+        print(f"Sende Status: {status}")
         self.mqtt_client.publish(self.config["status_topic"], status)
 
     def loop(self):
@@ -259,8 +261,28 @@ class WebServer:
         """
         Startet den Webserver, sodass er auf Anfragen lauscht.
         """
+        print("Starte Webserver...")
+        # Falls bereits ein Socket existiert (z.B. nach soft-reload), schließen.
+        if self.server_socket:
+            try:
+                self.server_socket.close()
+            except Exception:
+                pass
+
         self.server_socket = self.pool.socket()
-        self.server_socket.bind(("0.0.0.0", self.port))
+        try:
+            self.server_socket.bind(("0.0.0.0", self.port))
+        except OSError as e:
+            print(f"Fehler beim Binden des Sockets: {e}")
+            # EADDRINUSE (112) -> Port bereits in Benutzung. Versuche nächsten Port.
+            try:
+                self.port += 1
+                print(f"Versuche stattdessen Port {self.port}.")
+                self.server_socket.bind(("0.0.0.0", self.port))
+            except Exception as e2:
+                print(f"Bind nochmals fehlgeschlagen: {e2}")
+                raise
+
         self.server_socket.listen(1)
 
         print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
@@ -279,6 +301,7 @@ class WebServer:
 
         if size > 0:
             request = buffer[:size].decode("utf-8")
+            print("Anfrage:\n", request)
         if request:      
             if "GET / " in request:
                 response = self._handle_get_request(request)
@@ -306,24 +329,6 @@ class WebServer:
         body = ""
         settings = self.config_manager.load_settings()
         body = json.dumps(settings)
-        # if not request:
-        #     body = json.dumps(settings)
-        #     # for key, value in settings.items():
-        #     #     body = body + (f"\"{key}\": \"{value}\"")
-        # else:
-        #     body = json.dumps(settings[request])
-        # body = """
-        # <html>
-        # <body>
-        #     <h1>Pico W Konfiguration</h1>
-        #     <form method="POST">
-        #         Name: <input name="name"><br><br>
-        #         Wert: <input name="value"><br><br>
-        #         <button type="submit">Speichern</button>
-        #     </form>
-        # </body>
-        # </html>
-        # """
 
         return (
             "HTTP/1.1 200 OK\r\n"
@@ -373,18 +378,22 @@ class WebServer:
 # ===================================================================
 # HAUPTPROGRAMM (Main Logic)
 # ===================================================================
+print("Starte IoT Environmental Monitoring...")
 
 # 1. INITIALISIERUNG
 #    - Status-LED initialisieren.
+print("Init: LED")
 led = digitalio.DigitalInOut(board.LED)
 led.direction = digitalio.Direction.OUTPUT
 
 #    - ConfigManager erstellen und Konfiguration aus "settings.toml" laden.
+print("Init: ConfigManager")
 configManager = ConfigManager(filepath="settings.toml")
 config = configManager.load_settings()
 
 #    - NetworkManager erstellen und mit den geladenen WLAN-Daten verbinden.
 #      -> Währenddessen Status-LED blinken lassen.
+print("Init: NetworkManager")
 networkManager = NetworkManager(ssid=config["wifi_ssid"], password=config["wifi_password"])
 if not networkManager.is_connected():
     led.value = not led.value
@@ -394,6 +403,7 @@ if not networkManager.is_connected():
 print("IP-Adresse:", networkManager.get_ip())
 
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
+print("Init: Sensor, MqttClient, WebServer")
 sensor = Sensor(pin_number=config["sensor_pin"])
 mqttClient = MqttClient(config=config)
 webServer = WebServer(config_manager=configManager)
