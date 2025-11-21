@@ -179,7 +179,7 @@ class MqttClient:
         Verbindet sich mit dem MQTT-Broker und setzt eine "Last Will and Testament"
         Nachricht, die gesendet wird, falls das Gerät unerwartet die Verbindung verliert.
         """
-        self.mqtt_client.will_set(self.status_topic, "offline", retain=True)
+        self.mqtt_client.will_set(self.config["status_topic"], "offline", retain=True)
         self.mqtt_client.connect()
 
     def publish_telemetry(self, data: dict):
@@ -189,7 +189,10 @@ class MqttClient:
 
         :param data: Das Dictionary mit den Sensordaten.
         """
-        timestamp = datetime.now().isoformat()
+        tm = time.localtime()
+        timestamp = "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z".format(
+            tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]
+        )
         status = "ok" if data else "error"
 
         temp_payload = {
@@ -211,8 +214,8 @@ class MqttClient:
         temperature_json = json.dumps(temp_payload)
         humidity_json = json.dumps(humidity_payload)
 
-        self.mqtt_client.publish(self.telemetry_topic+"/temperature", temperature_json)
-        self.mqtt_client.publish(self.telemetry_topic+"/humidity", humidity_json)
+        self.mqtt_client.publish(self.config["telemetry_topic"]+"/temperature", temperature_json)
+        self.mqtt_client.publish(self.config["telemetry_topic"]+"/humidity", humidity_json)
 
     def publish_status(self, status: str):
         """
@@ -221,7 +224,7 @@ class MqttClient:
 
         :param status: Die zu sendende Statusnachricht.
         """
-        self.mqtt_client.publish(self.status_topic, status)
+        self.mqtt_client.publish(self.config["status_topic"], status)
 
     def loop(self):
         """
@@ -296,10 +299,7 @@ if not networkManager.is_connected():
     led.value = not led.value
     networkManager.connect()
 if not networkManager.is_connected():
-    print("Fehler: Keine WLAN-Verbindung möglich.")
-    while True:
-        led.value = not led.value
-        time.sleep(0.5)
+    exit(1)
 print("IP-Adresse:", networkManager.get_ip())
 
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
