@@ -25,6 +25,17 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_connection_manager
 import json
 import socketpool
+
+from asyncio import create_task, gather, run
+from asyncio import sleep as async_sleep
+
+import board
+import microcontroller
+import wifi
+
+from adafruit_httpserver import GET, Request, Response, Server, Websocket
+
+
 # ===================================================================
 # KLASSE: ConfigManager
 # ===================================================================
@@ -140,9 +151,13 @@ class Sensor:
         :return: Ein Dictionary wie {'temperature': 22.5, 'humidity': 45.8}
                  oder None, falls das Auslesen fehlschlägt.
         """
-        temperature = self.sensor.temperature
-        humidity = self.sensor.humidity
-        if temperature is None or humidity is None:
+        try:
+            temperature = self.sensor.temperature
+            humidity = self.sensor.humidity
+            if temperature is None or humidity is None:
+                return None
+        except Exception as e:
+            print(f"Fehler beim Auslesen des Sensors: {e}")
             return None
         return {'temperature': temperature, 'humidity': humidity} 
 
@@ -277,67 +292,67 @@ class WebServer:
             # EADDRINUSE (112) -> Port bereits in Benutzung. Versuche nächsten Port.
             try:
                 self.port += 1
-                print(f"Versuche stattdessen Port {self.port}.")
+                print(f"Versuche nochmal {self.port}.")
                 self.server_socket.bind(("0.0.0.0", self.port))
             except Exception as e2:
-                print(f"Bind nochmals fehlgeschlagen: {e2}")
+                print(f"Verbindung nochmals fehlgeschlagen: {e2}")
                 raise
 
         self.server_socket.listen(1)
-        # TODO: Non-blocking Socket implementieren
-        # # Setze Socket auf non-blocking
-        # try:
-        #     self.server_socket.setblocking(False)
-        # except Exception:
-        #     try:
-        #         self.server_socket.settimeout(0)
-        #     except Exception:
-        #         print("Warnung: Socket konnte nicht non-blocking gesetzt werden.")
+        self.server_socket.settimeout(0.5)
+        # self.server_socket.setblocking(False)
 
         print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
 
-    def poll(self):
+    def poll(self, config: dict):
         """
         Verarbeitet eine einzelne anstehende HTTP-Anfrage. Muss in der
         Hauptschleife des Programms aufgerufen werden.
         """
 
+        new_config = None
         try:
             client, addr = self.server_socket.accept()
         except Exception:
             # Kein Client wartet, poll kehrt sofort zurück
-            return
-        print("Neue Verbindung von", addr)
+            return False, new_config
 
-        buffer = bytearray(1024)       # Puffer anlegen
-        size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
+        try:
+            print("Neue Verbindung von", addr)
 
-        if size > 0:
-            request = buffer[:size].decode("utf-8")
-            print("Anfrage:\n", request)
-        if request:    
-            request_line = request.split("\r\n", 1)[0]
-            parts = request_line.split()
-            method = parts[0] if len(parts) > 0 else "GET"
-            path = parts[1] if len(parts) > 1 else "/"  
-            print(f"Empfangene Anfrage: Methode={method}, Pfad={path}")
-            if "GET" == method:
-                response = self._handle_get_request(path)
-            elif "POST" == method:
-                response = self._handle_post_request(request)
-            else:
-                body = "<h1>400 - Bad Request</h1>"
-                response = (
-                    "HTTP/1.1 400 Bad Request\r\n"
-                    "Content-Type: text/html\r\n"
-                    f"Content-Length: {len(body)}\r\n"
-                    "Connection: close\r\n\r\n"
-                    f"{body}"
-                )
+            buffer = bytearray(1024)       # Puffer anlegen
+            size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
 
-        client.send(response.encode("utf-8"))
-        client.close()
+            if size > 0:
+                request = buffer[:size].decode("utf-8")
+                print("Anfrage:\n", request)
+            if request:    
+                request_line = request.split("\r\n", 1)[0]
+                parts = request_line.split()
+                method = parts[0] if len(parts) > 0 else "GET"
+                path = parts[1] if len(parts) > 1 else "/"  
+                if "GET" == method:
+                    response = self._handle_get_request(path)
+                elif "POST" == method:
+                    response, new_config = self._handle_post_request(request, config)
+                else:
+                    body = "<h1>400 - Bad Request</h1>"
+                    response = (
+                        "HTTP/1.1 400 Bad Request\r\n"
+                        "Content-Type: text/html\r\n"
+                        f"Content-Length: {len(body)}\r\n"
+                        "Connection: close\r\n\r\n"
+                        f"{body}"
+                    )
+            print(f"Response:\n{response}")
+            client.send(response.encode("utf-8"))
+        except Exception:
+            # Kein Client wartet, poll kehrt sofort zurück
+            return True, new_config
+        finally:
+            client.close()
 
+        return True, new_config
 
     def _handle_get_request(self, request):
         """
@@ -385,8 +400,7 @@ class WebServer:
                 f"{body}"
             )
 
-
-    def _handle_post_request(self, request):
+    def _handle_post_request(self, request, config: dict):
         """
         Interne Methode: Bearbeitet POST-Anfragen vom Formular,
         speichert die neuen Einstellungen und löst einen Neustart aus.
@@ -399,19 +413,16 @@ class WebServer:
 
         # POST-Formulardaten parsen (key=value&key2=value2)
         new_settings = json.loads(body)
-        settings = self.configManager.load_settings()
         for key, value in new_settings.items():
-            settings[key] = value
-        self.config_manager.save_settings(settings)
-        
+            config[key] = value
+        body = json.dumps(config)
         return (
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            f"Content-Length: {len(settings)}\r\n"
+            "Content-Type: text/json\r\n"
+            f"Content-Length: {len(body)}\r\n"
             "Connection: close\r\n\r\n"
-            f"{settings}"
-        )
-
+            f"{body}"
+        ), config
 
 
 # ===================================================================
@@ -478,20 +489,8 @@ led.value = True
 #        - Fehlerbehandlung für getrennte WLAN- oder MQTT-Verbindungen implementieren
 #          und versuchen, die Verbindung wiederherzustellen.
 t = time.time()
-while True:
-    mqttClient.loop()
-    webServer.poll()
-    if (time.time() - t) >= config["reading_interval_seconds"]:
-        t = time.time()
-        data = sensor.read_data()
-        if data:
-            mqttClient.publish_telemetry(data)
-            print("Daten gesendet:", data)
-        else:
-            print("Fehler beim Auslesen der Sensordaten.")
 
-    # check every second for connection issues
-    if (time.time() - t) >= 1:
+def connection_issues_check():
         if not networkManager.is_connected():
             print("WLAN-Verbindung verloren. Versuche, erneut zu verbinden...")
             if networkManager.connect():
@@ -506,3 +505,23 @@ while True:
                 print("MQTT-Verbindung wiederhergestellt.")
             except Exception as e:
                 print(f"Erneuter Verbindungsversuch fehlgeschlagen: {e}")
+
+while True:
+    connection_issues_check()
+    mqttClient.loop()
+    # check every reading_interval_seconds for sending data
+    if (time.time() - t) >= config["reading_interval_seconds"]:
+        t = time.time()
+        data = sensor.read_data()
+        if data:
+            mqttClient.publish_telemetry(data)
+            print("Daten gesendet:", data)
+        else:
+            print("Fehler beim Auslesen der Sensordaten.")
+    reconnect, new_config = webServer.poll(config)
+    if reconnect:
+        connection_issues_check()
+    if new_config:
+        config = new_config
+        # configManager.save_settings(config)
+        print("neue Einstellungen gespeichert")
