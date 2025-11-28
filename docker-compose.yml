@@ -1,0 +1,34 @@
+services:
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    # environment:
+      # INFLUXDB_ADMIN_USER: admin
+      # INFLUXDB_ADMIN_PASSWORD: admin123
+      # INFLUXDB_BUCKET: sensor_data
+      # INFLUXDB_ORG: sensors
+      # # INFLUXDB_DB: mydb
+      # INFLUXDB_HTTP_AUTH_ENABLED: false
+    volumes:
+      - ./src/cloud/influx/data:/var/lib/influxdb2
+
+  telegraf:
+    image: telegraf:1.30
+    depends_on:
+      - influxdb
+    volumes:
+      - ./src/cloud/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+  # grafana:
+  #   image: grafana/grafana:11.1.0
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - influxdb
+  #   volumes:
+  #     - ./src/cloud/grafana/data:/var/lib/grafana
+
+volumes:
+  influxdb-data:
+  # grafana_data:
