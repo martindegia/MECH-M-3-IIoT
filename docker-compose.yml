@@ -1,15 +1,16 @@
 services:
   influxdb2:
+    container_name: ${INFLUXDB_HOST}
     image: influxdb:2.7
     ports:
       - "8086:8086"
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME_FILE: /run/secrets/influxdb2-admin-username
-      DOCKER_INFLUXDB_INIT_PASSWORD_FILE: /run/secrets/influxdb2-admin-password
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN_FILE: /run/secrets/influxdb2-admin-token
-      DOCKER_INFLUXDB_INIT_ORG: sensors
-      DOCKER_INFLUXDB_INIT_BUCKET: sensor_data
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_INIT_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
     secrets:
       - influxdb2-admin-username
       - influxdb2-admin-password
@@ -19,20 +20,27 @@ services:
       - ./src/cloud/influx/config:/etc/influxdb2
 
   telegraf:
+    container_name: telegraf
     image: telegraf:1.30
     depends_on:
-      - influxdb2
+      - ${INFLUXDB_HOST}
     environment:
-      - INFLUXDB_HOST=influxdb2
-      - INFLUXDB_TOKEN="todo_generate_token"
-      - INFLUXDB_ORG=local_org
-      - INFLUXDB_BUCKET=sensor_bucket
-      - TELEGRAF_COLLECTION_INTERVAL=5s
-      - HOSTNAME=telegraf
+      INFLUXDB_HOST: ${INFLUXDB_HOST}
+      INFLUXDB_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
+      TELEGRAF_COLLECTION_INTERVAL: ${TELEGRAF_COLLECTION_INTERVAL}
+      HOSTNAME: telegraf
+      MQTT_IP_ADDRESS: ${MQTT_IP_ADDRESS}
+      MQTT_NAME: ${MQTT_NAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
     volumes:
       - ./src/cloud/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+    secrets:
+      - influxdb2-admin-token
 
   grafana:
+    container_name: grafana
     image: grafana/grafana:11.1.0
     ports:
       - "3000:3000"
@@ -42,17 +50,17 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
-      - influxdb2
+      - ${INFLUXDB_HOST}
 
 secrets:
   influxdb2-admin-username:
-    file: ./.env.influxdb2-admin-username
+    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-username
   influxdb2-admin-password:
-    file: ./.env.influxdb2-admin-password
+    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-password
   influxdb2-admin-token:
-    file: ./.env.influxdb2-admin-token
+    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-token
     
 volumes:
   influxdb2-data:
   influxdb2-config:
-  # grafana_data:
+  grafana_data:

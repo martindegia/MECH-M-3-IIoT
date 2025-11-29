@@ -2,7 +2,7 @@
 
 # cloud
 
-adjust settings/password in `src/cloud/telegraf/telegraf-blueprint.conf` and copy it to `src/cloud/telegraf/telegraf.conf`
+adjust settings/password in `CHANGE-ENV-FILE` and rename it to `.env`.
 
 run containers with:
 
