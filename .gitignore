@@ -9,7 +9,6 @@ _site/
 src/raspi_firmware/settings.toml
 .pdm-python
 
-src/cloud/telegraf/telegraf.conf
 src/cloud/influx/config/*
 src/cloud/influx/data/*
 src/cloud/grafana/data/*
