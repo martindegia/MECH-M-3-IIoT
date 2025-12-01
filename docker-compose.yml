@@ -11,10 +11,6 @@ services:
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
       DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
-    secrets:
-      - influxdb2-admin-username
-      - influxdb2-admin-password
-      - influxdb2-admin-token
     volumes:
       - ./src/cloud/influx/data:/var/lib/influxdb2
       - ./src/cloud/influx/config:/etc/influxdb2
@@ -36,8 +32,6 @@ services:
       MQTT_PASSWORD: ${MQTT_PASSWORD}
     volumes:
       - ./src/cloud/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
-    secrets:
-      - influxdb2-admin-token
 
   grafana:
     container_name: grafana
@@ -46,19 +40,13 @@ services:
       - "3000:3000"
     volumes:
       - ./src/cloud/grafana/data:/var/lib/grafana
+      - ./src/cloud/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sensor_overview.json
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     depends_on:
       - ${INFLUXDB_HOST}
-
-secrets:
-  influxdb2-admin-username:
-    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-username
-  influxdb2-admin-password:
-    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-password
-  influxdb2-admin-token:
-    file: ./src/cloud/influx/secrets/.env.influxdb2-admin-token
     
 volumes:
   influxdb2-data:
