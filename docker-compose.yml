@@ -1,6 +1,6 @@
 services:
   influxdb2:
-    container_name: ${INFLUXDB_HOST}
+    container_name: influxdb2
     image: influxdb:2.7
     ports:
       - "8086:8086"
@@ -19,9 +19,9 @@ services:
     container_name: telegraf
     image: telegraf:1.30
     depends_on:
-      - ${INFLUXDB_HOST}
+      - influxdb2
     environment:
-      INFLUXDB_HOST: ${INFLUXDB_HOST}
+      INFLUXDB_HOST: influxdb2
       INFLUXDB_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
       INFLUXDB_ORG: ${INFLUXDB_ORG}
       INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
@@ -46,7 +46,7 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     depends_on:
-      - ${INFLUXDB_HOST}
+      - influxdb2
     
 volumes:
   influxdb2-data:

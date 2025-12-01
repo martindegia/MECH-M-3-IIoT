@@ -1,5 +1,5 @@
 {
-  "id": null,
+  "id": 2,
   "title": "Sensor Overview Dashboard",
   "uid": "sensor-overview",
   "timezone": "browser",
@@ -7,6 +7,19 @@
   "version": 1,
   "refresh": "10s",
   "panels": [
+    {
+      "type": "testcpu",
+      "title": "testcpu",
+      "id": 20,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "query": "import \"influxdata/influxdb/schema\"\n schema.tagValues(bucket: \"sensor_data\", tag: \"sensor_id\") |> count()",
+          "refId": "A"
+        }
+      ]
+    },
     {
       "type": "stat",
       "title": "Number of Sensors",

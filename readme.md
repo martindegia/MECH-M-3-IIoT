@@ -9,3 +9,5 @@ run containers with:
 ``` 
 docker-compose up -d
 ```
+
+When restarting the containers with new setup, delete all influx/data and influx/config files
