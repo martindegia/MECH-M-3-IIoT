@@ -1,0 +1,92 @@
+{
+  "id": null,
+  "title": "Sensor Overview Dashboard",
+  "uid": "sensor-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Number of Sensors",
+      "id": 1,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "query": "import \"influxdata/influxdb/schema\"\n schema.tagValues(bucket: \"sensor_data\", tag: \"sensor_id\") |> count()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Last Seen per Sensor",
+      "id": 2,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "query": "import \"influxdata/influxdb/schema\"\n schema.measurements(bucket: \"sensor_data\") |> map(fn: (r) => ({_value: r._value}))\n",
+          "refId": "A"
+        },
+        {
+          "query": "from(bucket: \"sensor_data\") |> range(start: -24h) |> keep(columns: [\"_time\", \"sensor_id\", \"_measurement\", \"value\", \"status\"]) |> group(columns: [\"sensor_id\"]) |> last()",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Temperature",
+      "id": 3,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"temperature\") |> filter(fn: (r) => r.sensor_id == v.sensor_id) |> filter(fn: (r) => r._field == \"value\")",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Humidity",
+      "id": 4,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"humidity\") |> filter(fn: (r) => r.sensor_id == v.sensor_id) |> filter(fn: (r) => r._field == \"value\")",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last Status",
+      "id": 5,
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\") |> range(start: -1h) |> filter(fn: (r) => r.sensor_id == v.sensor_id) |> filter(fn: (r) => r._field == \"status\") |> last()",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "sensor_id",
+        "label": "Sensor",
+        "datasource": "InfluxDB",
+        "query": "import \"influxdata/influxdb/schema\"\n schema.tagValues(bucket: \"sensor_data\", tag: \"sensor_id\")",
+        "sort": 1
+      }
+    ]
+  }
+}
