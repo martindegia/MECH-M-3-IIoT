@@ -41,10 +41,15 @@ services:
     volumes:
       - ./src/cloud/grafana/data:/var/lib/grafana
       - ./src/cloud/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./src/cloud/grafana/grafana-provisioning/:/etc/grafana/provisioning
     environment:
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sensor_overview.json
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      INFLUXDB_HOST: influxdb2
+      INFLUXDB_TOKEN: ${INFLUXDB_INIT_ADMIN_TOKEN}
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
     depends_on:
       - influxdb2
     
