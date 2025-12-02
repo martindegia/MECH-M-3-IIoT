@@ -8,15 +8,20 @@
   "refresh": "10s",
   "panels": [
     {
-      "type": "testcpu",
-      "title": "testcpu",
-      "id": 20,
-      "datasource": "InfluxDB",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "type": "timeseries",
+      "title": "test-compromised",
+      "gridPos": {"x": 0,"y": 0,"w": 12,"h": 8},
+      "datasource": {
+        "type": "influxdb"
+      },
+      "id": 30,
       "targets": [
         {
-          "query": "import \"influxdata/influxdb/schema\"\n schema.tagValues(bucket: \"sensor_data\", tag: \"sensor_id\") |> count()",
-          "refId": "A"
+          "datasource": {
+            "type": "influxdb"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"sensor_data\")\r\n  |> range(start: -1h)\r\n  |> filter(fn: (r) => r._measurement == \"cpu\")\r\n"
         }
       ]
     },
