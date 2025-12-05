@@ -34,7 +34,8 @@ import microcontroller
 import wifi
 
 from adafruit_httpserver import GET, Request, Response, Server, Websocket
-
+import adafruit_ntp
+import rtc
 
 # ===================================================================
 # KLASSE: ConfigManager
@@ -126,7 +127,25 @@ class NetworkManager:
         :return: Die IP-Adresse als String (z.B. "192.168.1.100").
         """
         return str(wifi.radio.ipv4_address)
+    
+    def set_ntp_time(self):
+        """
+        Synchronisiert die Systemzeit mit einem NTP-Server.
 
+        :param timezone_offset: Offset in Stunden zur UTC-Zeit.
+        """
+        try:
+            ntp = adafruit_ntp.NTP(
+                socketpool.SocketPool(wifi.radio),
+                server="pool.ntp.org"
+            )
+            clock = rtc.RTC()
+            clock.datetime = ntp.datetime
+            current_time = time.localtime()
+            print(f"Aktuelle NTP-Zeit: {current_time}")
+            print("Systemzeit mit NTP synchronisiert.")
+        except Exception as e:
+            print(f"Fehler bei NTP-Synchronisation: {e}")
 
 # ===================================================================
 # KLASSE: Sensor
@@ -196,7 +215,17 @@ class MqttClient:
         Nachricht, die gesendet wird, falls das Gerät unerwartet die Verbindung verliert.
         """
         print("Verbinde mit MQTT-Broker...")
-        self.mqtt_client.will_set(self.config["status_topic"], "offline", retain=True)
+        tm = time.localtime()
+        timestamp = "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z".format(
+            tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]
+        )
+        offline_payload = {
+            "timestamp": timestamp,
+            "sensor_id": self.config["device_id"],
+            "status": "offline"
+        }
+        offline_json = json.dumps(offline_payload)
+        self.mqtt_client.will_set(self.config["status_topic"], offline_json, retain=True)
         self.mqtt_client.connect()
 
     def publish_telemetry(self, data: dict):
@@ -210,29 +239,34 @@ class MqttClient:
         timestamp = "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z".format(
             tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]
         )
-        status = "ok" if data else "error"
 
         temp_payload = {
             "timestamp": timestamp,
             "sensor_id": self.config["device_id"],
             "value": data.get("temperature"),
-            "unit": "°C",
-            "status": status
+            "unit": "°C"
         }
 
         humidity_payload = {
             "timestamp": timestamp,
             "sensor_id": self.config["device_id"],
             "value": data.get("humidity"),
-            "unit": "%",
-            "status": status
+            "unit": "%"
+        }
+
+        status_payload = {
+            "timestamp": timestamp,
+            "sensor_id": self.config["device_id"],
+            "status": "online"
         }
 
         temperature_json = json.dumps(temp_payload)
         humidity_json = json.dumps(humidity_payload)
+        status_json = json.dumps(status_payload)
 
         self.mqtt_client.publish(self.config["telemetry_topic"]+"/temperature", temperature_json)
         self.mqtt_client.publish(self.config["telemetry_topic"]+"/humidity", humidity_json)
+        self.mqtt_client.publish(self.config["status_topic"], status_json)
 
     def publish_status(self, status: str):
         """
@@ -451,6 +485,7 @@ if not networkManager.is_connected():
 if not networkManager.is_connected():
     exit(1)
 print("IP-Adresse:", networkManager.get_ip())
+networkManager.set_ntp_time()
 
 #    - Sensor, MqttClient und WebServer mit den Konfigurationsdaten instanziieren.
 print("Init: Sensor, MqttClient, WebServer")
