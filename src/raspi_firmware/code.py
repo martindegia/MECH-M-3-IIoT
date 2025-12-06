@@ -15,7 +15,6 @@
 # Hier werden später alle benötigten CircuitPython-Bibliotheken importiert
 # z.B. import board, time, wifi, adafruit_dht, etc.
 import time
-from adafruit_datetime import datetime, timezone
 import adafruit_dht as dht
 import board
 import digitalio
@@ -25,15 +24,8 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_connection_manager
 import json
 import socketpool
-
-from asyncio import create_task, gather, run
-from asyncio import sleep as async_sleep
-
 import board
-import microcontroller
 import wifi
-
-from adafruit_httpserver import GET, Request, Response, Server, Websocket
 import adafruit_ntp
 import rtc
 
