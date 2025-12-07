@@ -213,7 +213,7 @@ class MqttClient:
         )
         offline_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.config["device_id"],
+            "device_id": self.config["device_id"],
             "status": "offline"
         }
         offline_json = json.dumps(offline_payload)
@@ -234,21 +234,21 @@ class MqttClient:
 
         temp_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.config["device_id"],
+            "device_id": self.config["device_id"],
             "value": data.get("temperature"),
             "unit": "°C"
         }
 
         humidity_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.config["device_id"],
+            "device_id": self.config["device_id"],
             "value": data.get("humidity"),
             "unit": "%"
         }
 
         status_payload = {
             "timestamp": timestamp,
-            "sensor_id": self.config["device_id"],
+            "device_id": self.config["device_id"],
             "status": "online"
         }
 
