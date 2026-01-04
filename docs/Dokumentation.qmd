@@ -3,38 +3,35 @@ title: "Industrial Internet of Things Projekt mit Raspberry Pico W"
 author: "Martin Degiampietro, Tobias Kern"
 format: html
 ---
-# Dokumentation
 
 ## Zusammenfassung der Aufgabenstellung und Ziele
 
 Ziel ist es, eine Lösung zu entwerfen und zu implementieren, die Sensordaten erfasst, diese sicher überträgt und in Echtzeit analysiert, um Anomalien zu erkennen.
 Folgende Punkte wurden implementiert:
+
 - Echtzeit-Erfassung von Temperatur und Luftfeuchtigkeit.
 - Fernkonfiguration des Geräts über REST-API.
 - MQTT-Kommunikation für Telemetriedaten und Statusmeldungen.
 
 ## Anleitung für User
-settings_template.toml auf Mikrocontroller kopieren und in settings.toml umbenennen.
-boot.py und code.py auf Mikrocontroller kopieren.
-Über Serielle Schnittstelle ist es möglich, die Outputs/logs zu lesen.
-WLAN-SSID und Passwort in settings.toml einrichten.
-Andere Einstellungen, wie z.B. MQTT IP-Addresse, username und password können auch eingestellt werden.
-Mikrokontroller verbindet sich mit Wlan und fängt an Daten an MQTT-Broker zu senden.
 
 ### Konfiguration und Start des Mikrocontrollers
 
-#### 1. Vorbereitung:
+#### 1. Vorbereitung
+
 - Raspberry Pi Pico W mit CircuitPython bespielen.
 - Notwendige Bibliotheken installieren:
-- `adafruit_minimqtt`
-- `adafruit_connection_manager.mpy`
-- `adafruit_dht`
-- `adafruit_ntp`
-- `adafruit_ticks`
+  - `adafruit_minimqtt`
+  - `adafruit_connection_manager.mpy`
+  - `adafruit_dht`
+  - `adafruit_ntp`
+  - `adafruit_ticks`
 - Sensor an den gewünschten GPIO-Pin anschließen.
 
-#### 2. Konfigurationsdatei anlegen:
+#### 2. Konfigurationsdatei anlegen
+
 In der Konfigurationsdatei `settings.toml` die gewünschten Parameter festlegen und überschreiben.
+Dafür steht als Vorlage die Dateie `settingsl_template.toml` zur Verfügung.
 
 ``` toml
 wifi_ssid = "YOUR-WLAN-SSID"
@@ -46,31 +43,39 @@ device_id = "YOUR-DEVICE-ID"
 sensor_pin = YOUR-SENSOR-PIN
 ```
 
-#### 3. Raspberry starten:
+#### 3. Raspberry starten
 
 Das Raspberry anstecken und folgende Dateien rüberkopieren:
-- settings.toml
-- boot.py
-- code.py
-- libraries
+
+- `settings.toml`
+- `boot.py`
+- `code.py`
+- die installierten Bibliotheken
+
 Die Status-LED zeigt den Verbindungsstatus:
+
 - Blinkt während WLAN-Verbindung
 - Dauerhaft an, wenn betriebsbereit
 
-#### 4. MQTT
-Die Sensordaten werden im Intervall (reading_interval_seconds) an den Broker gesendet. Statusmeldungen ("online", "offline") werden über das Status-Topic veröffentlicht.
+Über die Serielle Schnittstelle ist es möglich, die Outputs/logs zu lesen.
 
-#### 4. Webserver verwenden:
+#### 4. MQTT
+
+Die Sensordaten werden im Intervall `reading_interval_seconds` (der in `settings.toml` festgelegt ist) an den Broker gesendet. Statusmeldungen (`"online", "offline"`) werden über das Status-Topic veröffentlicht.
+
+#### 5. Webserver verwenden
 
 Als Standardport fürden Webserver wird port `8080` verwendet.
 Folgende Webserver-Endpunkte stehen zur Verfügung:
-- GET /config → gesamte Konfiguration als JSON
-- GET /config/KEY → einzelnen Wert abfragen
-- POST /config → JSON mit neuen Werten senden, z. B. {"wifi_ssid":"NeuesNetz"}
 
-#### 5. Cloud:
-Die Einstellungen müssen in `CHANGE-ENV-FILE` geändert werden und die Datei in `.env` umbenannt werden.
-Danach kann der container mit `docker-compose up -d` gestartet werden. Wenn der container neu gestartet wird müssen die Ordner `influx/data` and `influx/config` gelöscht werden.
+- `GET /config` → gesamte Konfiguration als JSON
+- `GET /config/KEY` → einzelnen Wert abfragen
+- `POST /config` → JSON mit neuen Werten senden, z. B. `{"wifi_ssid":"NeuesNetz"}`
+
+#### 6. Cloud
+
+Die Passwörter und Einstellungen müssen in `CHANGE-ENV-FILE` geändert werden und die Datei in `.env` umbenannt werden. Danach hat man eine `.env` Datei, mit alle Konfigurationen.
+Danach kann der container mit `docker-compose up -d` gestartet werden. Wenn der container neu gestartet wird, müssen die Ordner `influx/data` and `influx/config` gelöscht werden.
 
 ### Empfehlungen für die IT-Abteilung
 
@@ -82,8 +87,8 @@ Danach kann der container mit `docker-compose up -d` gestartet werden. Wenn der 
 
 - Das repository ist als `pdm`-Projekt strukturiert. Nutzen Sie `pdm install`, um die Abhängigkeiten zu installieren.
 - Für Dokumentation wurde [Quarto](https://quarto.org/) verwendet, die `quarto-cli`-Befehle sind ebenfalls in der `pdm`-Umgebung verfügbar.
-    - Führen Sie `quarto preview` im `docs`-Verzeichnis aus, um die Dokumentation lokal zu starten.
-    - Zudem existiert eine github-action zur automatischen Erstellung der Dokumentation, die diese auch automatisch als Website bereitstellt, wenn Sie in den Main-Branch pushen. Wenn sie diese entfernen wollen, müssen sie die Datei `.github/workflows/publish.yml` anpassen.
+  - Führen Sie `quarto preview` im `docs`-Verzeichnis aus, um die Dokumentation lokal zu starten.
+  - Zudem existiert eine github-action zur automatischen Erstellung der Dokumentation, die diese auch automatisch als Website bereitstellt, wenn Sie in den Main-Branch pushen. Wenn sie diese entfernen wollen, müssen sie die Datei `.github/workflows/publish.yml` anpassen.
 
 ### Struktur des Projekts
 
