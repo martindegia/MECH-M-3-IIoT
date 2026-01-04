@@ -1,0 +1,10 @@
+GET http://192.168.50.121:8080
+
+###
+
+POST http://192.168.50.121:8080
+Content-Type: application/json
+
+{
+  "reading_interval_seconds": 10
+}
