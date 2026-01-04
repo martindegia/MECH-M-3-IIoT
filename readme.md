@@ -69,8 +69,8 @@ Folgende Webserver-Endpunkte stehen zur Verfügung:
 - POST /config → JSON mit neuen Werten senden, z. B. {"wifi_ssid":"NeuesNetz"}
 
 #### 5. Cloud:
-Die Einstellungen müssen in `CHANGE-ENV-FILE` geändert werden und die Datei in `.env` umbenannt werden.
-Danach kann der container mit `docker-compose up -d` gestartet werden. Wenn der container neu gestartet wird müssen die Ordner `influx/data` and `influx/config` gelöscht werden.
+Die Passwörter und Einstellungen müssen in `CHANGE-ENV-FILE` geändert werden und die Datei in `.env` umbenannt werden. Danach hat man eine `.env` Datei, mit alle Konfigurationen.
+Danach kann der container mit `docker-compose up -d` gestartet werden. Wenn der container neu gestartet wird, müssen die Ordner `influx/data` and `influx/config` gelöscht werden.
 
 ### Empfehlungen für die IT-Abteilung
 
