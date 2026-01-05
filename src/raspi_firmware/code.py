@@ -3,7 +3,7 @@
 # ===================================================================
 # Haupt-Anwendung für das yourmuesli.at IoT Environmental Monitoring
 #
-# Autor: Ihr Team
+# Autor: Degiampietro Martin, Kern Tobias
 # Datum: 02.09.2025
 #
 # Hardware: Raspberry Pi Pico W
@@ -372,8 +372,18 @@ class WebServer:
                     )
             print(f"Response:\n{response}")
             client.send(response.encode("utf-8"))
-        except Exception:
+        except Exception as e:
             # Kein Client wartet, poll kehrt sofort zurück
+            print(f"Fehler bei der Anfrageverarbeitung: {e}")
+            body = json.dumps({"error": "json error"})
+            response = (
+                "HTTP/1.1 500 Internal Server Error\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Connection: close\r\n\r\n"
+                f"{body}"
+            )
+            client.send(response.encode("utf-8"))
             return True, new_config
         finally:
             client.close()
@@ -444,7 +454,7 @@ class WebServer:
         body = json.dumps(config)
         return (
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/json\r\n"
+            "Content-Type: application/json\r\n"
             f"Content-Length: {len(body)}\r\n"
             "Connection: close\r\n\r\n"
             f"{body}"
@@ -550,5 +560,5 @@ while True:
         connection_issues_check()
     if new_config:
         config = new_config
-        # configManager.save_settings(config)
+        configManager.save_settings(config)
         print("neue Einstellungen gespeichert")
