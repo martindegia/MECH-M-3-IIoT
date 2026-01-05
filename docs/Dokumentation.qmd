@@ -65,12 +65,13 @@ Die Sensordaten werden im Intervall `reading_interval_seconds` (der in `settings
 
 #### 5. Webserver verwenden
 
-Als Standardport fürden Webserver wird port `8080` verwendet.
+Als Standardport für den Webserver wird port `8080` verwendet. Als fallback wird `8081` genutzt, wenn `8080` nicht verfügbar ist.
 Folgende Webserver-Endpunkte stehen zur Verfügung:
 
 - `GET /config` → gesamte Konfiguration als JSON
 - `GET /config/KEY` → einzelnen Wert abfragen
-- `POST /config` → JSON mit neuen Werten senden, z. B. `{"wifi_ssid":"NeuesNetz"}`
+- `GET /status` → Status abfragen
+- `POST /config` → JSON mit neuen Werten senden, z. B. `{"reading_interval_seconds": 10}`
 
 #### 6. Cloud
 
