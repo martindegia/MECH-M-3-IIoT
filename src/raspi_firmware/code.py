@@ -311,22 +311,19 @@ class WebServer:
                 pass
 
         self.server_socket = self.pool.socket()
-        try:
-            self.server_socket.bind(("0.0.0.0", self.port))
-        except OSError as e:
-            print(f"Fehler beim Binden des Sockets: {e}")
-            # EADDRINUSE (112) -> Port bereits in Benutzung. Versuche nächsten Port.
+        for _ in range(3):
             try:
-                self.port += 1
-                print(f"Versuche nochmal {self.port}.")
                 self.server_socket.bind(("0.0.0.0", self.port))
-            except Exception as e2:
-                print(f"Verbindung nochmals fehlgeschlagen: {e2}")
-                raise
-
+                print(f"Socket gebunden auf Port {self.port}")
+                break
+            except OSError as e:
+                # EADDRINUSE = 112 on CircuitPython
+                if e.errno != 112:
+                    raise
+                print(f"Port {self.port} belegt, versuche nächsten")
+                self.port += 1
         self.server_socket.listen(1)
         self.server_socket.settimeout(0.5)
-        # self.server_socket.setblocking(False)
 
         print(f"Webserver läuft auf http://{wifi.radio.ipv4_address}:{self.port}")
 
@@ -337,128 +334,97 @@ class WebServer:
         """
 
         new_config = None
+
         try:
             client, addr = self.server_socket.accept()
         except Exception:
             # Kein Client wartet, poll kehrt sofort zurück
             return False, new_config
 
+        print("Neue Verbindung von", addr)
+
         try:
-            print("Neue Verbindung von", addr)
+            buffer = bytearray(1024)
+            size = client.recv_into(buffer)
 
-            buffer = bytearray(1024)       # Puffer anlegen
-            size = client.recv_into(buffer) # liest bis zu 1024 Bytes in buffer
+            if size <= 0:
+                return False, None
 
-            if size > 0:
-                request = buffer[:size].decode("utf-8")
-                print("Anfrage:\n", request)
-            if request:    
-                request_line = request.split("\r\n", 1)[0]
-                parts = request_line.split()
-                method = parts[0] if len(parts) > 0 else "GET"
-                path = parts[1] if len(parts) > 1 else "/"  
-                if "GET" == method:
-                    response = self._handle_get_request(path)
-                elif "POST" == method:
-                    response, new_config = self._handle_post_request(request, config)
-                else:
-                    body = "<h1>400 - Bad Request</h1>"
-                    response = (
-                        "HTTP/1.1 400 Bad Request\r\n"
-                        "Content-Type: text/html\r\n"
-                        f"Content-Length: {len(body)}\r\n"
-                        "Connection: close\r\n\r\n"
-                        f"{body}"
-                    )
-            print(f"Response:\n{response}")
-            client.send(response.encode("utf-8"))
-        except Exception as e:
-            # Kein Client wartet, poll kehrt sofort zurück
-            print(f"Fehler bei der Anfrageverarbeitung: {e}")
-            body = json.dumps({"error": "json error"})
-            response = (
-                "HTTP/1.1 500 Internal Server Error\r\n"
-                "Content-Type: application/json\r\n"
-                f"Content-Length: {len(body)}\r\n"
-                "Connection: close\r\n\r\n"
-                f"{body}"
+            request = buffer[:size].decode("utf-8")
+            print("Anfrage:\n", request)
+            request_line, body = self._split_request(request)
+            method, path = self._parse_request_line(request_line)
+
+            response, new_config = self._route_request(
+                method, path, body, config
             )
+            print(f"Response:\n{response}")
+
             client.send(response.encode("utf-8"))
-            return True, new_config
+
+        except Exception as e:
+            body = json.dumps({"error": str(e)})
+            client.send(self._response(500, body))
+
         finally:
             client.close()
 
         return True, new_config
 
-    def _handle_get_request(self, request):
+    def _route_request(self, method, path, body, config):
+        if method == "GET" and path in ["/config", "/status"]:
+            return self._handle_get_request(path), None
+
+        if method == "POST" and path == "/config":
+            return self._handle_post_request(body, config)
+
+        return self._response(404, json.dumps({"error": "not found"})), None
+
+    def _handle_get_request(self, path):
         """
         Interne Methode: Bearbeitet GET-Anfragen und liefert das
         HTML-Konfigurationsformular aus.
         """
-        settings = self.config_manager.load_settings()
+        if path == "/config":
+            settings = self.config_manager.load_settings()
+            return self._response(200, json.dumps(settings))
+        
+        if path == "/status":
+            status = {"status": "online"}
+            return self._response(200, json.dumps(status))
 
-        # TODO: nicht passwort im Klartext zurückgeben
-        # Wenn Pfad genau "/" dann ganze Konfiguration zurückgeben
-        if not request or request == "/":
-            body = json.dumps(settings)
-            return (
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: application/json\r\n"
-                f"Content-Length: {len(body)}\r\n"
-                "Connection: close\r\n\r\n"
-                f"{body}"
-            )
-
-        # Pfad bereinigen: /key oder /key?query -> key
-        key = request.lstrip("/")
-        if "?" in key:
-            key = key.split("?", 1)[0]
-
-        print(f"Angeforderter Schlüssel: {key}")
-        if key in settings:
-            value = settings[key]
-            # Gebe einzelnen Wert als JSON zurück
-            body = json.dumps({key: value})
-            return (
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: application/json\r\n"
-                f"Content-Length: {len(body)}\r\n"
-                "Connection: close\r\n\r\n"
-                f"{body}"
-            )
-        else:
-            body = json.dumps({"error": "not found"})
-            return (
-                "HTTP/1.1 404 Not Found\r\n"
-                "Content-Type: application/json\r\n"
-                f"Content-Length: {len(body)}\r\n"
-                "Connection: close\r\n\r\n"
-                f"{body}"
-            )
-
-    def _handle_post_request(self, request, config: dict):
+        return self._response(404, json.dumps({"error": "not found"}))
+        
+    def _handle_post_request(self, body, config):
         """
         Interne Methode: Bearbeitet POST-Anfragen vom Formular,
         speichert die neuen Einstellungen und löst einen Neustart aus.
         """
-
-        # Header und Body trennen
-        parts = request.split("\r\n\r\n", 1)
-        body = parts[1] if len(parts) > 1 else ""
         print("POST-Body:", body)
-
-        # POST-Formulardaten parsen (key=value&key2=value2)
         new_settings = json.loads(body)
         for key, value in new_settings.items():
             config[key] = value
-        body = json.dumps(config)
+        return self._response(200, json.dumps(config)), config
+
+    def _response(self, code, body):
         return (
-            "HTTP/1.1 200 OK\r\n"
+            f"HTTP/1.1 {code} OK\r\n"
             "Content-Type: application/json\r\n"
             f"Content-Length: {len(body)}\r\n"
             "Connection: close\r\n\r\n"
             f"{body}"
-        ), config
+        )
+
+    def _split_request(self, request):
+        parts = request.split("\r\n\r\n", 1)
+        return parts[0], parts[1] if len(parts) > 1 else ""
+
+    def _parse_request_line(self, request_line):
+        line = request_line.split("\r\n", 1)[0]
+        parts = line.split()
+        method = parts[0]
+        path = parts[1]
+        return method, path
 
 
 # ===================================================================
