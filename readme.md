@@ -69,6 +69,7 @@ Als Standardport für den Webserver wird port `8080` verwendet. Als fallback wir
 Folgende Webserver-Endpunkte stehen zur Verfügung:
 
 - `GET /config` → gesamte Konfiguration als JSON
+- `GET /config/KEY` → einzelnen Wert abfragen
 - `GET /status` → Status abfragen
 - `POST /config` → JSON mit neuen Werten senden, z. B. `{"reading_interval_seconds": 10}`
 

@@ -322,6 +322,8 @@ class WebServer:
                     raise
                 print(f"Port {self.port} belegt, versuche nächsten")
                 self.port += 1
+        else:
+            raise RuntimeError("Kein freier Port gefunden")
         self.server_socket.listen(1)
         self.server_socket.settimeout(0.5)
 
@@ -354,6 +356,9 @@ class WebServer:
             print("Anfrage:\n", request)
             request_line, body = self._split_request(request)
             method, path = self._parse_request_line(request_line)
+            if not method:
+                client.send(self._response(400, json.dumps({"error": "bad request"})))
+                return True, None
 
             response, new_config = self._route_request(
                 method, path, body, config
@@ -372,29 +377,41 @@ class WebServer:
         return True, new_config
 
     def _route_request(self, method, path, body, config):
-        if method == "GET" and path in ["/config", "/status"]:
-            return self._handle_get_request(path), None
+        if method == "GET" and path.startswith("/config"):
+            return self._handle_get_config(path), None
+
+        if method == "GET" and path == "/status":
+            return self._handle_get_status(), None
 
         if method == "POST" and path == "/config":
             return self._handle_post_request(body, config)
 
         return self._response(404, json.dumps({"error": "not found"})), None
-
-    def _handle_get_request(self, path):
+    
+    def _handle_get_config(self, path):
         """
         Interne Methode: Bearbeitet GET-Anfragen und liefert das
         HTML-Konfigurationsformular aus.
         """
+        settings = self.config_manager.load_settings()
+
+        # GET /config
         if path == "/config":
-            settings = self.config_manager.load_settings()
             return self._response(200, json.dumps(settings))
-        
-        if path == "/status":
-            status = {"status": "online"}
-            return self._response(200, json.dumps(status))
+
+        # GET /config/key
+        key = path[len("/config/"):]
+        if "?" in key:
+            key = key.split("?", 1)[0]
+
+        if key in settings:
+            return self._response(200, json.dumps({key: settings[key]}))
 
         return self._response(404, json.dumps({"error": "not found"}))
-        
+    
+    def _handle_get_status(self):
+        return self._response(200, json.dumps({"status": "online"}))
+
     def _handle_post_request(self, body, config):
         """
         Interne Methode: Bearbeitet POST-Anfragen vom Formular,
@@ -422,6 +439,10 @@ class WebServer:
     def _parse_request_line(self, request_line):
         line = request_line.split("\r\n", 1)[0]
         parts = line.split()
+
+        if len(parts) < 2:
+            return None, None
+
         method = parts[0]
         path = parts[1]
         return method, path
