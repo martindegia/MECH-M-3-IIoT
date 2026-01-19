@@ -1,0 +1,14 @@
+GET http://192.168.50.121:8080/config
+
+###
+
+GET http://192.168.50.121:8080/status
+
+###
+
+POST http://192.168.50.121:8080/config
+Content-Type: application/json
+
+{
+  "reading_interval_seconds": 5
+}
