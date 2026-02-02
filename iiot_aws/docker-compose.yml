@@ -30,7 +30,7 @@ services:
       AWS_IOT_ENDPOINT: ${AWS_IOT_ENDPOINT}
     volumes:
       - ./cloud/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - ./aws-credentials:/etc/telegraf/certs:ro
+      - ./aws-cred:/etc/telegraf/certs:ro
 
   grafana:
     container_name: grafana
