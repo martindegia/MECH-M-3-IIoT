@@ -1,0 +1,6 @@
+.env
+/aws-credentials
+
+cloud/influx/config/*
+cloud/influx/data/*
+cloud/grafana/data/*
