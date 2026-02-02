@@ -1,0 +1,101 @@
+{
+  "id": 2,
+  "title": "Sensor Overview Dashboard",
+  "uid": "sensor-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Degiampietro-Kern Humidity",
+      "id": 1,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\n  |> range(start: -2h)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mqtt_consumer\")\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\n  |> filter(fn: (r) => r[\"topic\"] == \"iiot/group/degiampietro-kern/sensor/humidity\")\n\n",
+          "refId": "A"
+        }
+      ]
+    },
+        {
+      "type": "timeseries",
+      "title": "Degiampietro-Kern Temperature",
+      "id": 1,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\n  |> range(start: -2h)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"mqtt_consumer\")\n  |> filter(fn: (r) => r[\"_field\"] == \"value\")\n  |> filter(fn: (r) => r[\"topic\"] == \"iiot/group/degiampietro-kern/sensor/temperature\")\n\n",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Available Sensors Measurements",
+      "id": 2,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\r\n  |> range(start: -1h)\r\n  |> distinct(column: \"topic\")\r\n  |> keep(columns: [\"topic\"])\r\n  |> group(columns: [])\r\n  |> filter(fn: (r) => r.topic !~ /status/)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Temperature graphs",
+      "id": 3,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\r\n  |> range(start: -2h)\r\r\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\")\r\n  |> filter(fn: (r) => r._field == \"value\")\r\n  |> filter(fn: (r) => r.topic =~ /sensor\\/temperature$/) ",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "All Humidity graphs",
+      "id": 4,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\r\n  |> range(start: -2h)\r\r\n  |> filter(fn: (r) => r._measurement == \"mqtt_consumer\")\r\n  |> filter(fn: (r) => r._field == \"value\")\r\n  |> filter(fn: (r) => r.topic =~ /sensor\\/humidity$/) ",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Last Status of Sensors",
+      "id": 5,
+      "datasource": "InfluxDB2",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "query": "from(bucket: \"sensor_data\")\r\n  |> range(start: -1h)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"status\")\r\n  |> group(columns: [\"topic\"])\r\n  |> last()\r\n  |> group()  \r\n  |> keep(columns: [\"_value\", \"topic\"])\r\n  |> sort(columns: [\"_value\"], desc: true)\r\n",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "sensor_id",
+        "label": "Sensor",
+        "datasource": "InfluxDB",
+        "query": "import \"influxdata/influxdb/schema\"\n schema.tagValues(bucket: \"sensor_data\", tag: \"sensor_id\")",
+        "sort": 1
+      }
+    ]
+  }
+}
