@@ -11,9 +11,6 @@ INFLUXDB_INIT_ADMIN_TOKEN=SkpKKDRik7iW_Xk3H7PQzsgwUEki-2e-0aLglRi1xI2MLkeREhInsr
 TELEGRAF_COLLECTION_INTERVAL=5s
 
 # AWS
-TLS_CA_PATH=/etc/telegraf/certs/AmazonRootCA1.pem
-TLS_CERT_PATH=/etc/telegraf/certs/certificate.pem.crt
-TLS_KEY_PATH=/etc/telegraf/certs/private.pem.key
 AWS_IOT_ENDPOINT=a22cq66fpnspmy-ats.iot.eu-central-1.amazonaws.com
 
 # Grafana Configuration
